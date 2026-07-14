@@ -346,7 +346,7 @@ const getSimulationTitle = (requirement) => {
 
 // 格式化 simulation_id 显示（截取前6位）
 const formatSimulationId = (simulationId) => {
-  if (!simulationId) return 'SIM_UNKNOWN'
+  if (!simulationId) return t('history.simUnknown')
   const prefix = simulationId.replace('sim_', '').slice(0, 6)
   return `SIM_${prefix.toUpperCase()}`
 }
@@ -377,9 +377,9 @@ const getFileType = (filename) => {
 
 // 获取文件类型标签文本
 const getFileTypeLabel = (filename) => {
-  if (!filename) return 'FILE'
+  if (!filename) return t('history.unknownFileType')
   const ext = filename.split('.').pop()?.toUpperCase()
-  return ext || 'FILE'
+  return ext || t('history.unknownFileType')
 }
 
 // 截断文件名（保留扩展名）

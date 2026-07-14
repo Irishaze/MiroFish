@@ -23,11 +23,11 @@ from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 from ..utils.locale import get_language_instruction, t
 from .zep_tools import (
-    ZepToolsService, 
-    SearchResult, 
-    InsightForgeResult, 
+    ZepToolsService,
+    SearchResult,
+    InsightForgeResult,
     PanoramaResult,
-    InterviewResult
+    ConsultResult
 )
 
 logger = get_logger('mirofish.report_agent')
@@ -493,19 +493,19 @@ TOOL_DESC_INSIGHT_FORGE = """\
 
 TOOL_DESC_PANORAMA_SEARCH = """\
 【广度搜索 - 获取全貌视图】
-这个工具用于获取模拟结果的完整全貌，特别适合了解事件演变过程。它会：
+这个工具用于获取研究循环结果的完整全貌，特别适合了解假设演化过程。它会：
 1. 获取所有相关节点和关系
 2. 区分当前有效的事实和历史/过期的事实
-3. 帮助你了解舆情是如何演变的
+3. 帮助你了解假设是如何随周期演化的（DERIVED_FROM关系链）
 
 【使用场景】
-- 需要了解事件的完整发展脉络
-- 需要对比不同阶段的舆情变化
+- 需要了解某个假设从提出到最终排名的完整演化脉络
+- 需要对比不同周期间假设置信度的变化
 - 需要获取全面的实体和关系信息
 
 【返回内容】
-- 当前有效事实（模拟最新结果）
-- 历史/过期事实（演变记录）
+- 当前有效事实（最新研究循环结果）
+- 历史/过期事实（假设演化记录）
 - 所有涉及的实体"""
 
 TOOL_DESC_QUICK_SEARCH = """\
@@ -520,64 +520,73 @@ TOOL_DESC_QUICK_SEARCH = """\
 【返回内容】
 - 与查询最相关的事实列表"""
 
-TOOL_DESC_INTERVIEW_AGENTS = """\
-【深度采访 - 真实Agent采访（双平台）】
-调用OASIS模拟环境的采访API，对正在运行的模拟Agent进行真实采访！
-这不是LLM模拟，而是调用真实的采访接口获取模拟Agent的原始回答。
-默认在Twitter和Reddit两个平台同时采访，获取更全面的观点。
+TOOL_DESC_CONSULT_SPECIALIST = """\
+【咨询专家 - 咨询固定Co-Scientist角色】
+调用研究循环环境的咨询API，向本轮研究循环中7个固定角色之一提问，
+获取该角色基于其职责与本轮完整推理上下文给出的第一人称回答。
+这不是LLM凭空模拟，而是调用真实运行（或已完成主流程、处于待命模式）的
+研究循环进程，让该角色结合自己在本轮的实际工作直接回答。
 
-功能流程：
-1. 自动读取人设文件，了解所有模拟Agent
-2. 智能选择与采访主题最相关的Agent（如学生、媒体、官方等）
-3. 自动生成采访问题
-4. 调用 /api/simulation/interview/batch 接口在双平台进行真实采访
-5. 整合所有采访结果，提供多视角分析
+七个固定角色：
+- Generation: 基于文献提出假设与评估视角
+- Reflection: 对照证据对每个候选项进行同行评审
+- Ranking: 裁判两两对战，更新Elo评分
+- Tournament: 安排锦标赛对战配对
+- Evolution: 跨周期精炼顶尖候选项
+- Proximity: 对近似重复候选项去重
+- MetaReview: 对本轮研究周期进行综合总结
 
 【使用场景】
-- 需要从不同角色视角了解事件看法（学生怎么看？媒体怎么看？官方怎么说？）
-- 需要收集多方意见和立场
-- 需要获取模拟Agent的真实回答（来自OASIS模拟环境）
-- 想让报告更生动，包含"采访实录"
+- 需要了解某个角色为什么做出特定判断（如Reflection为何认为某假设证据不足）
+- 需要澄清Elo锦标赛的裁判依据
+- 需要角色对最终结论的补充说明
+- 想让报告更透明，包含推理过程的第一人称说明
 
 【返回内容】
-- 被采访Agent的身份信息
-- 各Agent在Twitter和Reddit两个平台的采访回答
-- 关键引言（可直接引用）
-- 采访摘要和观点对比
+- 被咨询角色的名称
+- 该角色基于本轮完整上下文给出的回答
 
-【重要】需要OASIS模拟环境正在运行才能使用此功能！"""
+【重要】需要研究循环环境正在运行（或已完成但未关闭）才能使用此功能！"""
 
 # ── 大纲规划 prompt ──
 
 PLAN_SYSTEM_PROMPT = """\
-你是一个「未来预测报告」的撰写专家，拥有对模拟世界的「上帝视角」——你可以洞察模拟中每一位Agent的行为、言论和互动。
+你是一个「科学研究报告」的撰写专家。你要综合一支由7个固定Co-Scientist角色
+（Generation/Reflection/Ranking/Tournament/Evolution/Proximity/MetaReview）
+组成的研究团队，围绕一个研究问题反复提出假设、检索文献证据、批判性评审证据、
+两两对战锦标赛排名（Elo）后得出的完整推理轨迹，撰写成一份严谨的科学研究报告。
 
 【核心理念】
-我们构建了一个模拟世界，并向其中注入了特定的「模拟需求」作为变量。模拟世界的演化结果，就是对未来可能发生情况的预测。你正在观察的不是"实验数据"，而是"未来的预演"。
+研究团队没有编造答案——每一个假设都经过文献检索、同行评审、锦标赛排名的
+完整流程，你正在综合的是一条可追溯、可验证的证据链条，而不是模拟世界的演绎。
 
 【你的任务】
-撰写一份「未来预测报告」，回答：
-1. 在我们设定的条件下，未来发生了什么？
-2. 各类Agent（人群）是如何反应和行动？
-3. 这个模拟揭示了哪些值得关注的未来趋势和风险？
+撰写一份「科学研究报告」，必须覆盖以下内容：
+1. 研究问题是什么？
+2. 研究团队评估了哪些假设？（含Elo排名与置信度）
+3. 支持/反驳这些假设的证据是什么？（附引用来源）
+4. 基于当前证据，结论的置信度如何？
+5. 本轮研究存在哪些局限？
+6. 后续应该开展哪些工作来进一步验证？
 
 【报告定位】
-- ✅ 这是一份基于模拟的未来预测报告，揭示"如果这样，未来会怎样"
-- ✅ 聚焦于预测结果：事件走向、群体反应、涌现现象、潜在风险
-- ✅ 模拟世界中的Agent言行就是对未来人群行为的预测
-- ❌ 不是对现实世界现状的分析
-- ❌ 不是泛泛而谈的舆情综述
+- ✅ 这是一份基于文献证据的科学研究报告，如实呈现假设检验的过程与结论
+- ✅ 聚焦于证据强度、假设排名、置信度评估
+- ✅ 必须诚实呈现证据不足或矛盾的情况，不夸大结论
+- ❌ 不是对未来的预测或演绎
+- ❌ 不是泛泛而谈的话题综述
 
 【章节数量限制】
-- 最少2个章节，最多5个章节
+- 建议按以下6个维度组织：Question（研究问题）、Hypotheses Evaluated（评估的假设）、
+  Evidence Summary（证据总结，含引用）、Confidence Assessment（置信度评估）、
+  Limitations（局限性）、Suggested Next Steps（后续建议）
+- 最少2个章节，最多6个章节
 - 不需要子章节，每个章节直接撰写完整内容
-- 内容要精炼，聚焦于核心预测发现
-- 章节结构由你根据预测结果自主设计
 
 请输出JSON格式的报告大纲，格式如下：
 {
     "title": "报告标题",
-    "summary": "报告摘要（一句话概括核心预测发现）",
+    "summary": "报告摘要（一句话概括核心研究发现与置信度）",
     "sections": [
         {
             "title": "章节标题",
@@ -586,38 +595,38 @@ PLAN_SYSTEM_PROMPT = """\
     ]
 }
 
-注意：sections数组最少2个，最多5个元素！"""
+注意：sections数组最少2个，最多6个元素！"""
 
 PLAN_USER_PROMPT_TEMPLATE = """\
-【预测场景设定】
-我们向模拟世界注入的变量（模拟需求）：{simulation_requirement}
+【研究问题】
+{simulation_requirement}
 
-【模拟世界规模】
-- 参与模拟的实体数量: {total_nodes}
-- 实体间产生的关系数量: {total_edges}
+【研究循环规模】
+- 图谱中的实体数量: {total_nodes}
+- 实体间的证据关系数量: {total_edges}
 - 实体类型分布: {entity_types}
-- 活跃Agent数量: {total_entities}
+- 涉及的候选假设/证据数量: {total_entities}
 
-【模拟预测到的部分未来事实样本】
+【图谱中检索到的假设/证据样本】
 {related_facts_json}
 
-请以「上帝视角」审视这个未来预演：
-1. 在我们设定的条件下，未来呈现出了什么样的状态？
-2. 各类人群（Agent）是如何反应和行动的？
-3. 这个模拟揭示了哪些值得关注的未来趋势？
+请综合这条完整的假设检验推理轨迹：
+1. 研究团队围绕这个问题评估了哪些假设？
+2. 每个假设获得了怎样的证据支持，Elo排名与置信度如何？
+3. 当前证据链条中，哪些结论较为可靠，哪些仍有较大不确定性？
 
-根据预测结果，设计最合适的报告章节结构。
+根据研究循环的实际结果，设计最合适的报告章节结构。
 
-【再次提醒】报告章节数量：最少2个，最多5个，内容要精炼聚焦于核心预测发现。"""
+【再次提醒】报告章节数量：最少2个，最多6个，内容要精炼聚焦于假设检验的核心发现，如实呈现置信度与局限性。"""
 
 # ── 章节生成 prompt ──
 
 SECTION_SYSTEM_PROMPT_TEMPLATE = """\
-你是一个「未来预测报告」的撰写专家，正在撰写报告的一个章节。
+你是一个「科学研究报告」的撰写专家，正在撰写报告的一个章节。
 
 报告标题: {report_title}
 报告摘要: {report_summary}
-预测场景（模拟需求）: {simulation_requirement}
+研究问题: {simulation_requirement}
 
 当前要撰写的章节: {section_title}
 
@@ -625,32 +634,32 @@ SECTION_SYSTEM_PROMPT_TEMPLATE = """\
 【核心理念】
 ═══════════════════════════════════════════════════════════════
 
-模拟世界是对未来的预演。我们向模拟世界注入了特定条件（模拟需求），
-模拟中Agent的行为和互动，就是对未来人群行为的预测。
+研究团队（7个固定Co-Scientist角色）围绕研究问题反复提出假设、检索文献证据、
+批判性评审、两两对战锦标赛排名（Elo），最终形成了一条可追溯的证据链条。
+你正在综合的是这条真实的假设检验轨迹，不是虚构或演绎的内容。
 
 你的任务是：
-- 揭示在设定条件下，未来发生了什么
-- 预测各类人群（Agent）是如何反应和行动的
-- 发现值得关注的未来趋势、风险和机会
+- 如实呈现研究团队评估了哪些假设，以及各自的证据支持强度
+- 呈现假设的Elo排名与置信度评估
+- 发现值得关注的证据模式、矛盾之处和研究局限
 
-❌ 不要写成对现实世界现状的分析
-✅ 要聚焦于"未来会怎样"——模拟结果就是预测的未来
+❌ 不要编造模拟或推演之外的内容
+✅ 要聚焦于"证据支持什么结论，以及支持到什么程度"——诚实呈现不确定性
 
 ═══════════════════════════════════════════════════════════════
 【最重要的规则 - 必须遵守】
 ═══════════════════════════════════════════════════════════════
 
-1. 【必须调用工具观察模拟世界】
-   - 你正在以「上帝视角」观察未来的预演
-   - 所有内容必须来自模拟世界中发生的事件和Agent言行
+1. 【必须调用工具检索研究循环的实际数据】
+   - 所有内容必须来自图谱中记录的假设、证据、评审与锦标赛结果
    - 禁止使用你自己的知识来编写报告内容
-   - 每个章节至少调用3次工具（最多5次）来观察模拟的世界，它代表了未来
+   - 每个章节至少调用3次工具（最多5次）来检索研究循环的实际数据
 
-2. 【必须引用Agent的原始言行】
-   - Agent的发言和行为是对未来人群行为的预测
-   - 在报告中使用引用格式展示这些预测，例如：
-     > "某类人群会表示：原文内容..."
-   - 这些引用是模拟预测的核心证据
+2. 【必须引用文献证据与角色评审的原始内容】
+   - 文献摘录和角色评审意见是报告的核心证据
+   - 在报告中使用引用格式展示这些内容，例如：
+     > "Reflection Agent评审认为：原文内容..."
+   - 这些引用是支撑结论的核心证据，务必标注来源
 
 3. 【语言一致性 - 引用内容必须翻译为报告语言】
    - 工具返回的内容可能包含与报告语言不同的表述
@@ -659,10 +668,10 @@ SECTION_SYSTEM_PROMPT_TEMPLATE = """\
    - 翻译时保持原意不变，确保表述自然通顺
    - 这一规则同时适用于正文和引用块（> 格式）中的内容
 
-4. 【忠实呈现预测结果】
-   - 报告内容必须反映模拟世界中的代表未来的模拟结果
-   - 不要添加模拟中不存在的信息
-   - 如果某方面信息不足，如实说明
+4. 【忠实呈现证据与置信度】
+   - 报告内容必须反映研究循环中实际记录的假设、证据、Elo排名与置信度
+   - 不要添加研究循环中不存在的信息
+   - 如果某个假设证据不足或存在矛盾，如实说明，不要夸大结论的确定性
 
 ═══════════════════════════════════════════════════════════════
 【⚠️ 格式规范 - 极其重要！】
@@ -677,20 +686,20 @@ SECTION_SYSTEM_PROMPT_TEMPLATE = """\
 
 【正确示例】
 ```
-本章节分析了事件的舆论传播态势。通过对模拟数据的深入分析，我们发现...
+本章节分析了研究团队围绕该问题评估的核心假设及其证据支持情况。通过对研究循环数据的深入分析，我们发现...
 
-**首发引爆阶段**
+**假设一：剂量依赖效应**
 
-微博作为舆情的第一现场，承担了信息首发的核心功能：
+Generation Agent提出该假设后，Reflection Agent对相关文献进行了评审：
 
-> "微博贡献了68%的首发声量..."
+> "现有队列研究显示，运动强度与风险降低幅度呈正相关，但样本量有限..."
 
-**情绪放大阶段**
+**证据强度与置信度**
 
-抖音平台进一步放大了事件影响力：
+经过Elo锦标赛排名，该假设最终评分为1277，置信度评估为中等：
 
-- 视觉冲击力强
-- 情绪共鸣度高
+- 支持证据来自2项前瞻性队列研究
+- 尚缺乏随机对照试验的直接验证
 ```
 
 【错误示例】
@@ -712,7 +721,7 @@ SECTION_SYSTEM_PROMPT_TEMPLATE = """\
 - insight_forge: 深度洞察分析，自动分解问题并多维度检索事实和关系
 - panorama_search: 广角全景搜索，了解事件全貌、时间线和演变过程
 - quick_search: 快速验证某个具体信息点
-- interview_agents: 采访模拟Agent，获取不同角色的第一人称观点和真实反应
+- consult_specialist: 咨询固定Co-Scientist角色，获取其对本轮推理过程的第一人称说明
 
 ═══════════════════════════════════════════════════════════════
 【工作流程】
@@ -827,10 +836,10 @@ REACT_FORCE_FINAL_MSG = "已达到工具调用限制，请直接输出 Final Ans
 # ── Chat prompt ──
 
 CHAT_SYSTEM_PROMPT_TEMPLATE = """\
-你是一个简洁高效的模拟预测助手。
+你是一个简洁高效的科学研究助手。
 
 【背景】
-预测条件: {simulation_requirement}
+研究问题: {simulation_requirement}
 
 【已生成的分析报告】
 {report_content}
@@ -943,12 +952,12 @@ class ReportAgent:
                     "limit": "返回结果数量（可选，默认10）"
                 }
             },
-            "interview_agents": {
-                "name": "interview_agents",
-                "description": TOOL_DESC_INTERVIEW_AGENTS,
+            "consult_specialist": {
+                "name": "consult_specialist",
+                "description": TOOL_DESC_CONSULT_SPECIALIST,
                 "parameters": {
-                    "interview_topic": "采访主题或需求描述（如：'了解学生对宿舍甲醛事件的看法'）",
-                    "max_agents": "最多采访的Agent数量（可选，默认5，最大10）"
+                    "role": "咨询的角色名（Generation/Reflection/Ranking/Tournament/Evolution/Proximity/MetaReview之一）",
+                    "question": "咨询问题"
                 }
             }
         }
@@ -1005,18 +1014,14 @@ class ReportAgent:
                 )
                 return result.to_text()
             
-            elif tool_name == "interview_agents":
-                # 深度采访 - 调用真实的OASIS采访API获取模拟Agent的回答（双平台）
-                interview_topic = parameters.get("interview_topic", parameters.get("query", ""))
-                max_agents = parameters.get("max_agents", 5)
-                if isinstance(max_agents, str):
-                    max_agents = int(max_agents)
-                max_agents = min(max_agents, 10)
-                result = self.zep_tools.interview_agents(
+            elif tool_name == "consult_specialist":
+                # 咨询固定Co-Scientist角色 - 通过IPC向正在运行的研究循环进程提问
+                role = parameters.get("role", "MetaReview")
+                question = parameters.get("question", parameters.get("query", ""))
+                result = self.zep_tools.consult_specialist(
                     simulation_id=self.simulation_id,
-                    interview_requirement=interview_topic,
-                    simulation_requirement=self.simulation_requirement,
-                    max_agents=max_agents
+                    role=role,
+                    question=question,
                 )
                 return result.to_text()
             
@@ -1062,7 +1067,7 @@ class ReportAgent:
             return f"工具执行失败: {str(e)}"
     
     # 合法的工具名称集合，用于裸 JSON 兜底解析时校验
-    VALID_TOOL_NAMES = {"insight_forge", "panorama_search", "quick_search", "interview_agents"}
+    VALID_TOOL_NAMES = {"insight_forge", "panorama_search", "quick_search", "consult_specialist"}
 
     def _parse_tool_calls(self, response: str) -> List[Dict[str, Any]]:
         """
@@ -1194,27 +1199,30 @@ class ReportAgent:
                 ))
             
             outline = ReportOutline(
-                title=response.get("title", "模拟分析报告"),
+                title=response.get("title", "科学研究报告"),
                 summary=response.get("summary", ""),
                 sections=sections
             )
-            
+
             if progress_callback:
                 progress_callback("planning", 100, t('progress.outlinePlanComplete'))
-            
+
             logger.info(t('report.outlinePlanDone', count=len(sections)))
             return outline
-            
+
         except Exception as e:
             logger.error(t('report.outlinePlanFailed', error=str(e)))
-            # 返回默认大纲（3个章节，作为fallback）
+            # 返回默认大纲（6个章节，作为fallback）
             return ReportOutline(
-                title="未来预测报告",
-                summary="基于模拟预测的未来趋势与风险分析",
+                title="科学研究报告",
+                summary="基于研究循环假设检验过程的证据与置信度分析",
                 sections=[
-                    ReportSection(title="预测场景与核心发现"),
-                    ReportSection(title="人群行为预测分析"),
-                    ReportSection(title="趋势展望与风险提示")
+                    ReportSection(title="Question"),
+                    ReportSection(title="Hypotheses Evaluated"),
+                    ReportSection(title="Evidence Summary"),
+                    ReportSection(title="Confidence Assessment"),
+                    ReportSection(title="Limitations"),
+                    ReportSection(title="Suggested Next Steps")
                 ]
             )
     
@@ -1288,10 +1296,10 @@ class ReportAgent:
         min_tool_calls = 3  # 最少工具调用次数
         conflict_retries = 0  # 工具调用与Final Answer同时出现的连续冲突次数
         used_tools = set()  # 记录已调用过的工具名
-        all_tools = {"insight_forge", "panorama_search", "quick_search", "interview_agents"}
+        all_tools = {"insight_forge", "panorama_search", "quick_search", "consult_specialist"}
 
         # 报告上下文，用于InsightForge的子问题生成
-        report_context = f"章节标题: {section.title}\n模拟需求: {self.simulation_requirement}"
+        report_context = f"章节标题: {section.title}\n研究问题: {self.simulation_requirement}"
         
         for iteration in range(max_iterations):
             if progress_callback:

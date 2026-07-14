@@ -114,9 +114,9 @@ const statusClass = computed(() => {
 })
 
 const statusText = computed(() => {
-  if (currentStatus.value === 'error') return 'Error'
-  if (currentStatus.value === 'completed') return 'Ready'
-  return 'Preparing'
+  if (currentStatus.value === 'error') return t('common.error')
+  if (currentStatus.value === 'completed') return t('common.ready')
+  return t('common.preparing')
 })
 
 // --- Helpers ---
@@ -150,29 +150,13 @@ const handleGoBack = () => {
   }
 }
 
-const handleNextStep = (params = {}) => {
+const handleNextStep = () => {
   addLog(t('log.enterStep3'))
 
-  // 记录模拟轮数配置
-  if (params.maxRounds) {
-    addLog(t('log.customRoundsConfig', { rounds: params.maxRounds }))
-  } else {
-    addLog(t('log.useAutoRounds'))
-  }
-  
-  // 构建路由参数
-  const routeParams = {
+  router.push({
     name: 'SimulationRun',
     params: { simulationId: currentSimulationId.value }
-  }
-  
-  // 如果有自定义轮数，通过 query 参数传递
-  if (params.maxRounds) {
-    routeParams.query = { maxRounds: params.maxRounds }
-  }
-  
-  // 跳转到 Step 3 页面
-  router.push(routeParams)
+  })
 }
 
 // --- Data Logic ---

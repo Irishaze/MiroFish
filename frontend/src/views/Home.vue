@@ -189,6 +189,23 @@
               </div>
             </div>
 
+            <!-- 文献检索数量 -->
+            <div class="console-section">
+              <div class="console-header">
+                <span class="console-label">{{ $t('home.maxPapersLabel') }}</span>
+                <span class="console-meta">{{ formData.maxPapers }}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                step="1"
+                v-model.number="formData.maxPapers"
+                class="max-papers-slider"
+                :disabled="loading"
+              />
+            </div>
+
             <!-- 启动按钮 -->
             <div class="console-section btn-section">
               <button 
@@ -221,7 +238,8 @@ const router = useRouter()
 
 // 表单数据
 const formData = ref({
-  simulationRequirement: ''
+  simulationRequirement: '',
+  maxPapers: 15 // 自动文献检索篇数，硬上限20
 })
 
 // 文件列表
@@ -235,9 +253,9 @@ const isDragOver = ref(false)
 // 文件输入引用
 const fileInput = ref(null)
 
-// 计算属性:是否可以提交
+// 计算属性:是否可以提交（问题优先入口：只需研究问题，文件为可选补充）
 const canSubmit = computed(() => {
-  return formData.value.simulationRequirement.trim() !== '' && files.value.length > 0
+  return formData.value.simulationRequirement.trim() !== ''
 })
 
 // 触发文件选择
@@ -300,7 +318,7 @@ const startSimulation = () => {
   
   // 存储待上传的数据
   import('../store/pendingUpload.js').then(({ setPendingUpload }) => {
-    setPendingUpload(files.value, formData.value.simulationRequirement)
+    setPendingUpload(files.value, formData.value.simulationRequirement, formData.value.maxPapers)
     
     // 立即跳转到Process页面（使用特殊标识表示新建项目）
     router.push({
@@ -683,6 +701,12 @@ const startSimulation = () => {
 
 .console-section.btn-section {
   padding-top: 0;
+}
+
+.max-papers-slider {
+  width: 100%;
+  accent-color: #000;
+  cursor: pointer;
 }
 
 .console-header {

@@ -8,8 +8,8 @@
           <!-- Report Header -->
           <div class="report-header-block">
             <div class="report-meta">
-              <span class="report-tag">Prediction Report</span>
-              <span class="report-id">ID: {{ reportId || 'REF-2024-X92' }}</span>
+              <span class="report-tag">{{ $t('step4.researchReport') }}</span>
+              <span class="report-id">{{ $t('step4.reportIdLabel', { id: reportId || 'REF-2024-X92' }) }}</span>
             </div>
             <h1 class="main-title">{{ reportOutline.title }}</h1>
             <p class="sub-title">{{ reportOutline.summary }}</p>
@@ -72,7 +72,7 @@
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
           </div>
-          <span class="waiting-text">Waiting for Report Agent...</span>
+          <span class="waiting-text">{{ $t('step4.waitingForReportAgent') }}</span>
         </div>
       </div>
 
@@ -89,15 +89,15 @@
         <div class="workflow-overview" v-if="agentLogs.length > 0 || reportOutline">
           <div class="workflow-metrics">
             <div class="metric">
-              <span class="metric-label">Sections</span>
+              <span class="metric-label">{{ $t('step4.metricSections') }}</span>
               <span class="metric-value mono">{{ completedSections }}/{{ totalSections }}</span>
             </div>
             <div class="metric">
-              <span class="metric-label">Elapsed</span>
+              <span class="metric-label">{{ $t('step4.metricElapsed') }}</span>
               <span class="metric-value mono">{{ formatElapsedTime }}</span>
             </div>
             <div class="metric">
-              <span class="metric-label">Tools</span>
+              <span class="metric-label">{{ $t('step4.metricTools') }}</span>
               <span class="metric-value mono">{{ totalToolCalls }}</span>
             </div>
             <div class="metric metric-right">
@@ -166,11 +166,11 @@
                   <!-- Report Start -->
                   <template v-if="log.action === 'report_start'">
                     <div class="info-row">
-                      <span class="info-key">Simulation</span>
+                      <span class="info-key">{{ $t('step4.labelSimulation') }}</span>
                       <span class="info-val mono">{{ log.details?.simulation_id }}</span>
                     </div>
                     <div class="info-row" v-if="log.details?.simulation_requirement">
-                      <span class="info-key">Requirement</span>
+                      <span class="info-key">{{ $t('step4.labelRequirement') }}</span>
                       <span class="info-val">{{ log.details.simulation_requirement }}</span>
                     </div>
                   </template>
@@ -182,7 +182,7 @@
                   <template v-if="log.action === 'planning_complete'">
                     <div class="status-message success">{{ log.details?.message }}</div>
                     <div class="outline-badge" v-if="log.details?.outline">
-                      {{ log.details.outline.sections?.length || 0 }} sections planned
+                      {{ $t('step4.sectionsPlanned', { count: log.details.outline.sections?.length || 0 }) }}
                     </div>
                   </template>
 
@@ -264,16 +264,16 @@
                   <template v-if="log.action === 'tool_result'">
                     <div class="result-wrapper" :class="'result-' + log.details?.tool_name">
                       <!-- Hide result-meta for tools that show stats in their own header -->
-                      <div v-if="!['interview_agents', 'insight_forge', 'panorama_search', 'quick_search'].includes(log.details?.tool_name)" class="result-meta">
+                      <div v-if="!['consult_specialist', 'insight_forge', 'panorama_search', 'quick_search'].includes(log.details?.tool_name)" class="result-meta">
                         <span class="result-tool">{{ getToolDisplayName(log.details?.tool_name) }}</span>
                         <span class="result-size">{{ formatResultSize(log.details?.result_length) }}</span>
                       </div>
                       
                       <!-- Structured Result Display -->
                       <div v-if="!showRawResult[log.timestamp]" class="result-structured">
-                        <!-- Interview Agents - Special Display -->
-                        <template v-if="log.details?.tool_name === 'interview_agents'">
-                          <InterviewDisplay :result="parseInterview(log.details.result)" :result-length="log.details?.result_length" />
+                        <!-- Consult Specialist - Special Display -->
+                        <template v-if="log.details?.tool_name === 'consult_specialist'">
+                          <ConsultDisplay :result="parseConsult(log.details.result)" :result-length="log.details?.result_length" />
                         </template>
                         
                         <!-- Insight Forge -->
@@ -307,12 +307,12 @@
                   <!-- LLM Response -->
                   <template v-if="log.action === 'llm_response'">
                     <div class="llm-meta">
-                      <span class="meta-tag">Iteration {{ log.details?.iteration }}</span>
+                      <span class="meta-tag">{{ $t('step4.metaIteration', { n: log.details?.iteration }) }}</span>
                       <span class="meta-tag" :class="{ active: log.details?.has_tool_calls }">
-                        Tools: {{ log.details?.has_tool_calls ? 'Yes' : 'No' }}
+                        {{ $t('step4.metaTools', { value: log.details?.has_tool_calls ? $t('common.yes') : $t('common.no') }) }}
                       </span>
                       <span class="meta-tag" :class="{ active: log.details?.has_final_answer, 'final-answer': log.details?.has_final_answer }">
-                        Final: {{ log.details?.has_final_answer ? 'Yes' : 'No' }}
+                        {{ $t('step4.metaFinal', { value: log.details?.has_final_answer ? $t('common.yes') : $t('common.no') }) }}
                       </span>
                     </div>
                     <!-- 当是最终答案时，显示特殊提示 -->
@@ -320,7 +320,7 @@
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      <span>Section "{{ log.section_title }}" content generated</span>
+                      <span>{{ $t('step4.sectionContentGenerated', { title: log.section_title }) }}</span>
                     </div>
                     <div v-if="expandedLogs.has(log.timestamp) && log.details?.response" class="llm-content">
                       <pre>{{ log.details.response }}</pre>
@@ -334,7 +334,7 @@
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                       </svg>
-                      <span>Report Generation Complete</span>
+                      <span>{{ $t('step4.reportGenerationComplete') }}</span>
                     </div>
                   </template>
                 </div>
@@ -347,17 +347,17 @@
                   <div class="footer-actions">
                     <!-- Tool Call: Show/Hide Params -->
                     <button v-if="log.action === 'tool_call' && log.details?.parameters" class="action-btn" @click.stop="toggleLogExpand(log)">
-                      {{ expandedLogs.has(log.timestamp) ? 'Hide Params' : 'Show Params' }}
+                      {{ expandedLogs.has(log.timestamp) ? $t('step4.hideParams') : $t('step4.showParams') }}
                     </button>
-                    
+
                     <!-- Tool Result: Raw/Structured View -->
                     <button v-if="log.action === 'tool_result'" class="action-btn" @click.stop="toggleRawResult(log.timestamp, $event)">
-                      {{ showRawResult[log.timestamp] ? 'Structured View' : 'Raw Output' }}
+                      {{ showRawResult[log.timestamp] ? $t('step4.structuredView') : $t('step4.rawOutput') }}
                     </button>
-                    
+
                     <!-- LLM Response: Show/Hide Response -->
                     <button v-if="log.action === 'llm_response' && log.details?.response" class="action-btn" @click.stop="toggleLogExpand(log)">
-                      {{ expandedLogs.has(log.timestamp) ? 'Hide Response' : 'Show Response' }}
+                      {{ expandedLogs.has(log.timestamp) ? $t('step4.hideResponse') : $t('step4.showResponse') }}
                     </button>
                   </div>
                 </div>
@@ -368,7 +368,7 @@
           <!-- Empty State -->
           <div v-if="agentLogs.length === 0 && !isComplete" class="workflow-empty">
             <div class="empty-pulse"></div>
-            <span>Waiting for agent activity...</span>
+            <span>{{ $t('step4.waitingForAgentActivity') }}</span>
           </div>
         </div>
       </div>
@@ -377,8 +377,8 @@
     <!-- Bottom Console Logs -->
     <div class="console-logs">
       <div class="log-header">
-        <span class="log-title">CONSOLE OUTPUT</span>
-        <span class="log-id">{{ reportId || 'NO_REPORT' }}</span>
+        <span class="log-title">{{ $t('step4.consoleOutput') }}</span>
+        <span class="log-id">{{ reportId || $t('step4.noReportPlaceholder') }}</span>
       </div>
       <div class="log-content" ref="logContent">
         <div class="log-line" v-for="(log, idx) in consoleLogs" :key="idx">
@@ -495,49 +495,49 @@ const isLogCollapsed = (log) => {
 }
 
 // Tool configurations with display names and colors
-const toolConfig = {
+const toolConfig = computed(() => ({
   'insight_forge': {
-    name: 'Deep Insight',
+    name: t('step4.toolDeepInsight'),
     color: 'purple',
     icon: 'lightbulb' // 灯泡图标 - 代表洞察
   },
   'panorama_search': {
-    name: 'Panorama Search',
+    name: t('step4.toolPanoramaSearch'),
     color: 'blue',
     icon: 'globe' // 地球图标 - 代表全景搜索
   },
-  'interview_agents': {
-    name: 'Agent Interview',
+  'consult_specialist': {
+    name: t('step4.toolConsultSpecialist'),
     color: 'green',
     icon: 'users' // 用户图标 - 代表对话
   },
   'quick_search': {
-    name: 'Quick Search',
+    name: t('step4.toolQuickSearch'),
     color: 'orange',
     icon: 'zap' // 闪电图标 - 代表快速
   },
   'get_graph_statistics': {
-    name: 'Graph Stats',
+    name: t('step4.toolGraphStats'),
     color: 'cyan',
     icon: 'chart' // 图表图标 - 代表统计
   },
   'get_entities_by_type': {
-    name: 'Entity Query',
+    name: t('step4.toolEntityQuery'),
     color: 'pink',
     icon: 'database' // 数据库图标 - 代表实体
   }
-}
+}))
 
 const getToolDisplayName = (toolName) => {
-  return toolConfig[toolName]?.name || toolName
+  return toolConfig.value[toolName]?.name || toolName
 }
 
 const getToolColor = (toolName) => {
-  return toolConfig[toolName]?.color || 'gray'
+  return toolConfig.value[toolName]?.color || 'gray'
 }
 
 const getToolIcon = (toolName) => {
-  return toolConfig[toolName]?.icon || 'tool'
+  return toolConfig.value[toolName]?.icon || 'tool'
 }
 
 // Parse functions
@@ -686,218 +686,24 @@ const parsePanorama = (text) => {
   return result
 }
 
-const parseInterview = (text) => {
-  const result = {
-    topic: '',
-    agentCount: '',
-    successCount: 0,
-    totalCount: 0,
-    selectionReason: '',
-    interviews: [],
-    summary: ''
-  }
-  
+const parseConsult = (text) => {
+  // 匹配 ConsultResult.to_text() 输出格式：
+  // **咨询角色:** {role}\n\n**Q:** {question}\n\n**A:** {response}\n
+  const result = { role: '', question: '', answer: '' }
+
   try {
-    // 提取采访主题
-    const topicMatch = text.match(/\*\*采访主题:\*\*\s*(.+?)(?:\n|$)/)
-    if (topicMatch) result.topic = topicMatch[1].trim()
-    
-    // 提取采访人数（如 "5 / 9 位模拟Agent"）
-    const countMatch = text.match(/\*\*采访人数:\*\*\s*(\d+)\s*\/\s*(\d+)/)
-    if (countMatch) {
-      result.successCount = parseInt(countMatch[1])
-      result.totalCount = parseInt(countMatch[2])
-      result.agentCount = `${countMatch[1]} / ${countMatch[2]}`
-    }
-    
-    // 提取采访对象选择理由
-    const reasonMatch = text.match(/### 采访对象选择理由\n([\s\S]*?)(?=\n---\n|\n### 采访实录)/)
-    if (reasonMatch) {
-      result.selectionReason = reasonMatch[1].trim()
-    }
-    
-    // 解析每个人的选择理由
-    const parseIndividualReasons = (reasonText) => {
-      const reasons = {}
-      if (!reasonText) return reasons
-      
-      const lines = reasonText.split(/\n+/)
-      let currentName = null
-      let currentReason = []
-      
-      for (const line of lines) {
-        let headerMatch = null
-        let name = null
-        let reasonStart = null
-        
-        // 格式1: 数字. **名字（index=X）**：理由
-        // 例如: 1. **校友_345（index=1）**：作为武大校友...
-        headerMatch = line.match(/^\d+\.\s*\*\*([^*（(]+)(?:[（(]index\s*=?\s*\d+[)）])?\*\*[：:]\s*(.*)/)
-        if (headerMatch) {
-          name = headerMatch[1].trim()
-          reasonStart = headerMatch[2]
-        }
-        
-        // 格式2: - 选择名字（index X）：理由
-        // 例如: - 选择家长_601（index 0）：作为家长群体代表...
-        if (!headerMatch) {
-          headerMatch = line.match(/^-\s*选择([^（(]+)(?:[（(]index\s*=?\s*\d+[)）])?[：:]\s*(.*)/)
-          if (headerMatch) {
-            name = headerMatch[1].trim()
-            reasonStart = headerMatch[2]
-          }
-        }
-        
-        // 格式3: - **名字（index X）**：理由
-        // 例如: - **家长_601（index 0）**：作为家长群体代表...
-        if (!headerMatch) {
-          headerMatch = line.match(/^-\s*\*\*([^*（(]+)(?:[（(]index\s*=?\s*\d+[)）])?\*\*[：:]\s*(.*)/)
-          if (headerMatch) {
-            name = headerMatch[1].trim()
-            reasonStart = headerMatch[2]
-          }
-        }
-        
-        if (name) {
-          // 保存上一个人的理由
-          if (currentName && currentReason.length > 0) {
-            reasons[currentName] = currentReason.join(' ').trim()
-          }
-          // 开始新的人
-          currentName = name
-          currentReason = reasonStart ? [reasonStart.trim()] : []
-        } else if (currentName && line.trim() && !line.match(/^未选|^综上|^最终选择/)) {
-          // 理由的续行（排除结尾总结段落）
-          currentReason.push(line.trim())
-        }
-      }
-      
-      // 保存最后一个人的理由
-      if (currentName && currentReason.length > 0) {
-        reasons[currentName] = currentReason.join(' ').trim()
-      }
-      
-      return reasons
-    }
-    
-    const individualReasons = parseIndividualReasons(result.selectionReason)
-    
-    // 提取每个采访记录
-    const interviewBlocks = text.split(/#### 采访 #\d+:/).slice(1)
-    
-    interviewBlocks.forEach((block, index) => {
-      const interview = {
-        num: index + 1,
-        title: '',
-        name: '',
-        role: '',
-        bio: '',
-        selectionReason: '',
-        questions: [],
-        twitterAnswer: '',
-        redditAnswer: '',
-        quotes: []
-      }
-      
-      // 提取标题（如 "学生"、"教育从业者" 等）
-      const titleMatch = block.match(/^(.+?)\n/)
-      if (titleMatch) interview.title = titleMatch[1].trim()
-      
-      // 提取姓名和角色
-      const nameRoleMatch = block.match(/\*\*(.+?)\*\*\s*\((.+?)\)/)
-      if (nameRoleMatch) {
-        interview.name = nameRoleMatch[1].trim()
-        interview.role = nameRoleMatch[2].trim()
-        // 设置该人的选择理由
-        interview.selectionReason = individualReasons[interview.name] || ''
-      }
-      
-      // 提取简介
-      const bioMatch = block.match(/_简介:\s*([\s\S]*?)_\n/)
-      if (bioMatch) {
-        interview.bio = bioMatch[1].trim().replace(/\.\.\.$/, '...')
-      }
-      
-      // 提取问题列表
-      const qMatch = block.match(/\*\*Q:\*\*\s*([\s\S]*?)(?=\n\n\*\*A:\*\*|\*\*A:\*\*)/)
-      if (qMatch) {
-        const qText = qMatch[1].trim()
-        // 按数字编号分割问题
-        const questions = qText.split(/\n\d+\.\s+/).filter(q => q.trim())
-        if (questions.length > 0) {
-          // 如果第一个问题前面有"1."，需要特殊处理
-          const firstQ = qText.match(/^1\.\s+(.+)/)
-          if (firstQ) {
-            interview.questions = [firstQ[1].trim(), ...questions.slice(1).map(q => q.trim())]
-          } else {
-            interview.questions = questions.map(q => q.trim())
-          }
-        }
-      }
-      
-      // 提取回答 - 分Twitter和Reddit
-      const answerMatch = block.match(/\*\*A:\*\*\s*([\s\S]*?)(?=\*\*关键引言|$)/)
-      if (answerMatch) {
-        const answerText = answerMatch[1].trim()
-        
-        // 分离Twitter和Reddit回答
-        const twitterMatch = answerText.match(/【Twitter平台回答】\n?([\s\S]*?)(?=【Reddit平台回答】|$)/)
-        const redditMatch = answerText.match(/【Reddit平台回答】\n?([\s\S]*?)$/)
-        
-        if (twitterMatch) {
-          interview.twitterAnswer = twitterMatch[1].trim()
-        }
-        if (redditMatch) {
-          interview.redditAnswer = redditMatch[1].trim()
-        }
-        
-        // 平台回退逻辑（兼容旧格式：只有一个平台标记的情况）
-        if (!twitterMatch && redditMatch) {
-          // 只有 Reddit 回答，仅在非占位文本时复制为默认显示
-          if (interview.redditAnswer && interview.redditAnswer !== '（该平台未获得回复）') {
-            interview.twitterAnswer = interview.redditAnswer
-          }
-        } else if (twitterMatch && !redditMatch) {
-          if (interview.twitterAnswer && interview.twitterAnswer !== '（该平台未获得回复）') {
-            interview.redditAnswer = interview.twitterAnswer
-          }
-        } else if (!twitterMatch && !redditMatch) {
-          // 没有分平台标记（极旧格式），整体作为回答
-          interview.twitterAnswer = answerText
-        }
-      }
-      
-      // 提取关键引言（兼容多种引号格式）
-      const quotesMatch = block.match(/\*\*关键引言:\*\*\n([\s\S]*?)(?=\n---|\n####|$)/)
-      if (quotesMatch) {
-        const quotesText = quotesMatch[1]
-        // 优先匹配 > "text" 格式
-        let quoteMatches = quotesText.match(/> "([^"]+)"/g)
-        // 回退：匹配 > "text" 或 > \u201Ctext\u201D（中文引号）
-        if (!quoteMatches) {
-          quoteMatches = quotesText.match(/> [\u201C""]([^\u201D""]+)[\u201D""]/g)
-        }
-        if (quoteMatches) {
-          interview.quotes = quoteMatches
-            .map(q => q.replace(/^> [\u201C""]|[\u201D""]$/g, '').trim())
-            .filter(q => q)
-        }
-      }
-      
-      if (interview.name || interview.title) {
-        result.interviews.push(interview)
-      }
-    })
-    
-    // 提取采访摘要
-    const summaryMatch = text.match(/### 采访摘要与核心观点\n([\s\S]*?)$/)
-    if (summaryMatch) {
-      result.summary = summaryMatch[1].trim()
-    }
+    const roleMatch = text.match(/\*\*咨询角色:\*\*\s*(.+?)(?:\n|$)/)
+    if (roleMatch) result.role = roleMatch[1].trim()
+
+    const qMatch = text.match(/\*\*Q:\*\*\s*([\s\S]*?)(?=\n\n\*\*A:\*\*)/)
+    if (qMatch) result.question = qMatch[1].trim()
+
+    const aMatch = text.match(/\*\*A:\*\*\s*([\s\S]*?)$/)
+    if (aMatch) result.answer = aMatch[1].trim()
   } catch (e) {
-    console.warn('Parse interview failed:', e)
+    console.warn('Parse consult failed:', e)
   }
-  
+
   return result
 }
 
@@ -975,30 +781,30 @@ const InsightDisplay = {
     const formatSize = (length) => {
       if (!length) return ''
       if (length >= 1000) {
-        return `${(length / 1000).toFixed(1)}k chars`
+        return t('step4.sizeKChars', { count: (length / 1000).toFixed(1) })
       }
-      return `${length} chars`
+      return t('step4.sizeChars', { count: length })
     }
-    
+
     return () => h('div', { class: 'insight-display' }, [
       // Header Section - like interview header
       h('div', { class: 'insight-header' }, [
         h('div', { class: 'header-main' }, [
-          h('div', { class: 'header-title' }, 'Deep Insight'),
+          h('div', { class: 'header-title' }, t('step4.toolDeepInsight')),
           h('div', { class: 'header-stats' }, [
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.stats.facts || props.result.facts.length),
-              h('span', { class: 'stat-label' }, 'Facts')
+              h('span', { class: 'stat-label' }, t('step4.statFacts'))
             ]),
             h('span', { class: 'stat-divider' }, '/'),
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.stats.entities || props.result.entities.length),
-              h('span', { class: 'stat-label' }, 'Entities')
+              h('span', { class: 'stat-label' }, t('step4.statEntities'))
             ]),
             h('span', { class: 'stat-divider' }, '/'),
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.stats.relationships || props.result.relations.length),
-              h('span', { class: 'stat-label' }, 'Relations')
+              h('span', { class: 'stat-label' }, t('step4.statRelations'))
             ]),
             props.resultLength && h('span', { class: 'stat-divider' }, '·'),
             props.resultLength && h('span', { class: 'stat-size' }, formatSize(props.resultLength))
@@ -1147,25 +953,25 @@ const PanoramaDisplay = {
     const formatSize = (length) => {
       if (!length) return ''
       if (length >= 1000) {
-        return `${(length / 1000).toFixed(1)}k chars`
+        return t('step4.sizeKChars', { count: (length / 1000).toFixed(1) })
       }
-      return `${length} chars`
+      return t('step4.sizeChars', { count: length })
     }
-    
+
     return () => h('div', { class: 'panorama-display' }, [
       // Header Section
       h('div', { class: 'panorama-header' }, [
         h('div', { class: 'header-main' }, [
-          h('div', { class: 'header-title' }, 'Panorama Search'),
+          h('div', { class: 'header-title' }, t('step4.toolPanoramaSearch')),
           h('div', { class: 'header-stats' }, [
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.stats.nodes),
-              h('span', { class: 'stat-label' }, 'Nodes')
+              h('span', { class: 'stat-label' }, t('step4.statNodes'))
             ]),
             h('span', { class: 'stat-divider' }, '/'),
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.stats.edges),
-              h('span', { class: 'stat-label' }, 'Edges')
+              h('span', { class: 'stat-label' }, t('step4.statEdges'))
             ]),
             props.resultLength && h('span', { class: 'stat-divider' }, '·'),
             props.resultLength && h('span', { class: 'stat-size' }, formatSize(props.resultLength))
@@ -1275,307 +1081,41 @@ const PanoramaDisplay = {
 }
 
 // Interview Display Component - Conversation Style (Q&A Format)
-const InterviewDisplay = {
+const ConsultDisplay = {
   props: ['result', 'resultLength'],
   setup(props) {
-    // Format result size for display
+    const { t } = useI18n()
+    const expanded = ref(false)
+
     const formatSize = (length) => {
       if (!length) return ''
-      if (length >= 1000) {
-        return `${(length / 1000).toFixed(1)}k chars`
-      }
-      return `${length} chars`
-    }
-    
-    // Clean quote text - remove leading list numbers to avoid double numbering
-    const cleanQuoteText = (text) => {
-      if (!text) return ''
-      // Remove leading patterns like "1. ", "2. ", "1、", "（1）", "(1)" etc.
-      return text.replace(/^\s*\d+[\.\、\)）]\s*/, '').trim()
-    }
-    
-    const activeIndex = ref(0)
-    const expandedAnswers = ref(new Set())
-    // 为每个问题-回答对维护独立的平台选择状态
-    const platformTabs = reactive({}) // { 'agentIdx-qIdx': 'twitter' | 'reddit' }
-    
-    // 获取某个问题的当前平台选择
-    const getPlatformTab = (agentIdx, qIdx) => {
-      const key = `${agentIdx}-${qIdx}`
-      return platformTabs[key] || 'twitter'
-    }
-    
-    // 设置某个问题的平台选择
-    const setPlatformTab = (agentIdx, qIdx, platform) => {
-      const key = `${agentIdx}-${qIdx}`
-      platformTabs[key] = platform
-    }
-    
-    const toggleAnswer = (key) => {
-      const newSet = new Set(expandedAnswers.value)
-      if (newSet.has(key)) {
-        newSet.delete(key)
-      } else {
-        newSet.add(key)
-      }
-      expandedAnswers.value = newSet
-    }
-    
-    const formatAnswer = (text, expanded) => {
-      if (!text) return ''
-      if (expanded || text.length <= 400) return text
-      return text.substring(0, 400) + '...'
-    }
-    
-    // 检查是否为平台占位文本
-    const isPlaceholderText = (text) => {
-      if (!text) return true
-      const t = text.trim()
-      return t === '（该平台未获得回复）' || t === '(该平台未获得回复)' || t === '[无回复]'
+      if (length >= 1000) return t('step4.sizeKChars', { count: (length / 1000).toFixed(1) })
+      return t('step4.sizeChars', { count: length })
     }
 
-    // 尝试按问题编号分割回答
-    const splitAnswerByQuestions = (answerText, questionCount) => {
-      if (!answerText || questionCount <= 0) return [answerText]
-      if (isPlaceholderText(answerText)) return ['']
+    const toggleExpanded = () => { expanded.value = !expanded.value }
 
-      // 支持两种编号格式：
-      // 1. "问题X：" 或 "问题X:" （中文格式，后端新格式）
-      // 2. "1. " 或 "\n1. " （数字+点，旧格式兼容）
-      let matches = []
-      let match
-
-      // 优先尝试 "问题X：" 格式
-      const cnPattern = /(?:^|[\r\n]+)问题(\d+)[：:]\s*/g
-      while ((match = cnPattern.exec(answerText)) !== null) {
-        matches.push({
-          num: parseInt(match[1]),
-          index: match.index,
-          fullMatch: match[0]
-        })
-      }
-
-      // 如果没匹配到，回退到 "数字." 格式
-      if (matches.length === 0) {
-        const numPattern = /(?:^|[\r\n]+)(\d+)\.\s+/g
-        while ((match = numPattern.exec(answerText)) !== null) {
-          matches.push({
-            num: parseInt(match[1]),
-            index: match.index,
-            fullMatch: match[0]
-          })
-        }
-      }
-
-      // 如果没有找到编号或只找到一个，返回整体
-      if (matches.length <= 1) {
-        const cleaned = answerText
-          .replace(/^问题\d+[：:]\s*/, '')
-          .replace(/^\d+\.\s+/, '')
-          .trim()
-        return [cleaned || answerText]
-      }
-
-      // 按编号提取各部分
-      const parts = []
-      for (let i = 0; i < matches.length; i++) {
-        const current = matches[i]
-        const next = matches[i + 1]
-
-        const startIdx = current.index + current.fullMatch.length
-        const endIdx = next ? next.index : answerText.length
-
-        let part = answerText.substring(startIdx, endIdx).trim()
-        part = part.replace(/[\r\n]+$/, '').trim()
-        parts.push(part)
-      }
-
-      if (parts.length > 0 && parts.some(p => p)) {
-        return parts
-      }
-
-      return [answerText]
-    }
-    
-    // 获取某个问题对应的回答
-    const getAnswerForQuestion = (interview, qIdx, platform) => {
-      const answer = platform === 'twitter' ? interview.twitterAnswer : (interview.redditAnswer || interview.twitterAnswer)
-      if (!answer || isPlaceholderText(answer)) return answer || ''
-
-      const questionCount = interview.questions?.length || 1
-      const answers = splitAnswerByQuestions(answer, questionCount)
-
-      // 分割成功且索引有效
-      if (answers.length > 1 && qIdx < answers.length) {
-        return answers[qIdx] || ''
-      }
-
-      // 分割失败：第一个问题返回完整回答，其余返回空
-      return qIdx === 0 ? answer : ''
-    }
-    
-    // 检查某个问题是否有双平台回答（过滤占位文本）
-    const hasMultiplePlatforms = (interview, qIdx) => {
-      if (!interview.twitterAnswer || !interview.redditAnswer) return false
-      const twitterAnswer = getAnswerForQuestion(interview, qIdx, 'twitter')
-      const redditAnswer = getAnswerForQuestion(interview, qIdx, 'reddit')
-      // 两个平台都有真实回答（非占位文本）且内容不同
-      return !isPlaceholderText(twitterAnswer) && !isPlaceholderText(redditAnswer) && twitterAnswer !== redditAnswer
-    }
-    
-    return () => h('div', { class: 'interview-display' }, [
-      // Header Section
-      h('div', { class: 'interview-header' }, [
-        h('div', { class: 'header-main' }, [
-          h('div', { class: 'header-title' }, 'Agent Interview'),
-          h('div', { class: 'header-stats' }, [
-            h('span', { class: 'stat-item' }, [
-              h('span', { class: 'stat-value' }, props.result.successCount || props.result.interviews.length),
-              h('span', { class: 'stat-label' }, 'Interviewed')
-            ]),
-            props.result.totalCount > 0 && h('span', { class: 'stat-divider' }, '/'),
-            props.result.totalCount > 0 && h('span', { class: 'stat-item' }, [
-              h('span', { class: 'stat-value' }, props.result.totalCount),
-              h('span', { class: 'stat-label' }, 'Total')
-            ]),
-            props.resultLength && h('span', { class: 'stat-divider' }, '·'),
-            props.resultLength && h('span', { class: 'stat-size' }, formatSize(props.resultLength))
-          ])
-        ]),
-        props.result.topic && h('div', { class: 'header-topic' }, props.result.topic)
-      ]),
-      
-      // Agent Selector Tabs
-      props.result.interviews.length > 0 && h('div', { class: 'agent-tabs' }, 
-        props.result.interviews.map((interview, i) => h('button', {
-          class: ['agent-tab', { active: activeIndex.value === i }],
-          key: i,
-          onClick: () => { activeIndex.value = i }
-        }, [
-          h('span', { class: 'tab-avatar' }, interview.name ? interview.name.charAt(0) : (i + 1)),
-          h('span', { class: 'tab-name' }, interview.title || interview.name || `Agent ${i + 1}`)
-        ]))
-      ),
-      
-      // Active Interview Detail
-      props.result.interviews.length > 0 && h('div', { class: 'interview-detail' }, [
-        // Agent Profile Card
-        h('div', { class: 'agent-profile' }, [
-          h('div', { class: 'profile-avatar' }, props.result.interviews[activeIndex.value]?.name?.charAt(0) || 'A'),
-          h('div', { class: 'profile-info' }, [
-            h('div', { class: 'profile-name' }, props.result.interviews[activeIndex.value]?.name || 'Agent'),
-            h('div', { class: 'profile-role' }, props.result.interviews[activeIndex.value]?.role || ''),
-            props.result.interviews[activeIndex.value]?.bio && h('div', { class: 'profile-bio' }, props.result.interviews[activeIndex.value].bio)
-          ])
-        ]),
-        
-        // Selection Reason - 选择理由
-        props.result.interviews[activeIndex.value]?.selectionReason && h('div', { class: 'selection-reason' }, [
-          h('div', { class: 'reason-label' }, '选择理由'),
-          h('div', { class: 'reason-content' }, props.result.interviews[activeIndex.value].selectionReason)
-        ]),
-        
-        // Q&A Conversation Thread - 一问一答样式
-        h('div', { class: 'qa-thread' }, 
-          (props.result.interviews[activeIndex.value]?.questions?.length > 0 
-            ? props.result.interviews[activeIndex.value].questions 
-            : [props.result.interviews[activeIndex.value]?.question || 'No question available']
-          ).map((question, qIdx) => {
-            const interview = props.result.interviews[activeIndex.value]
-            const currentPlatform = getPlatformTab(activeIndex.value, qIdx)
-            const answerText = getAnswerForQuestion(interview, qIdx, currentPlatform)
-            const hasDualPlatform = hasMultiplePlatforms(interview, qIdx)
-            const expandKey = `${activeIndex.value}-${qIdx}`
-            const isExpanded = expandedAnswers.value.has(expandKey)
-            const isPlaceholder = isPlaceholderText(answerText)
-
-            return h('div', { class: 'qa-pair', key: qIdx }, [
-              // Question Block
-              h('div', { class: 'qa-question' }, [
-                h('div', { class: 'qa-badge q-badge' }, `Q${qIdx + 1}`),
-                h('div', { class: 'qa-content' }, [
-                  h('div', { class: 'qa-sender' }, 'Interviewer'),
-                  h('div', { class: 'qa-text' }, question)
-                ])
-              ]),
-
-              // Answer Block
-              answerText && h('div', { class: ['qa-answer', { 'answer-placeholder': isPlaceholder }] }, [
-                h('div', { class: 'qa-badge a-badge' }, `A${qIdx + 1}`),
-                h('div', { class: 'qa-content' }, [
-                  h('div', { class: 'qa-answer-header' }, [
-                    h('div', { class: 'qa-sender' }, interview?.name || 'Agent'),
-                    // 双平台切换按钮（仅在有真实双平台回答时显示）
-                    hasDualPlatform && h('div', { class: 'platform-switch' }, [
-                      h('button', {
-                        class: ['platform-btn', { active: currentPlatform === 'twitter' }],
-                        onClick: (e) => { e.stopPropagation(); setPlatformTab(activeIndex.value, qIdx, 'twitter') }
-                      }, [
-                        h('svg', { class: 'platform-icon', viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
-                          h('circle', { cx: '12', cy: '12', r: '10' }),
-                          h('line', { x1: '2', y1: '12', x2: '22', y2: '12' }),
-                          h('path', { d: 'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' })
-                        ]),
-                        h('span', {}, t('step4.world1'))
-                      ]),
-                      h('button', {
-                        class: ['platform-btn', { active: currentPlatform === 'reddit' }],
-                        onClick: (e) => { e.stopPropagation(); setPlatformTab(activeIndex.value, qIdx, 'reddit') }
-                      }, [
-                        h('svg', { class: 'platform-icon', viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
-                          h('path', { d: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z' })
-                        ]),
-                        h('span', {}, t('step4.world2'))
-                      ])
-                    ])
-                  ]),
-                  h('div', {
-                    class: ['qa-text', 'answer-text', { 'placeholder-text': isPlaceholder }],
-                    innerHTML: isPlaceholder
-                      ? answerText
-                      : formatAnswer(answerText, isExpanded)
-                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\n/g, '<br>')
-                  }),
-                  // Expand/Collapse Button（占位文本不显示）
-                  !isPlaceholder && answerText.length > 400 && h('button', {
-                    class: 'expand-answer-btn',
-                    onClick: () => toggleAnswer(expandKey)
-                  }, isExpanded ? 'Show Less' : 'Show More')
-                ])
-              ])
-            ])
-          })
-        ),
-        
-        // Key Quotes Section
-        props.result.interviews[activeIndex.value]?.quotes?.length > 0 && h('div', { class: 'quotes-section' }, [
-          h('div', { class: 'quotes-header' }, 'Key Quotes'),
-          h('div', { class: 'quotes-list' },
-            props.result.interviews[activeIndex.value].quotes.slice(0, 3).map((quote, qi) => {
-              const cleanedQuote = cleanQuoteText(quote)
-              const displayQuote = cleanedQuote.length > 200 ? cleanedQuote.substring(0, 200) + '...' : cleanedQuote
-              return h('blockquote', { 
-                key: qi, 
-                class: 'quote-item',
-                innerHTML: renderMarkdown(displayQuote)
-              })
-            })
-          )
-        ])
-      ]),
-
-      // Summary Section (Collapsible)
-      props.result.summary && h('div', { class: 'summary-section' }, [
-        h('div', { class: 'summary-header' }, 'Interview Summary'),
-        h('div', { 
-          class: 'summary-content',
-          innerHTML: renderMarkdown(props.result.summary.length > 500 ? props.result.summary.substring(0, 500) + '...' : props.result.summary)
-        })
-      ])
-    ])
-  }
+    return { t, expanded, formatSize, toggleExpanded }
+  },
+  template: `
+    <div class="consult-display">
+      <div class="consult-header">
+        <span class="consult-role-badge">{{ result.role || t('step4.consultRoleFallback') }}</span>
+        <span class="consult-size">{{ formatSize(resultLength) }}</span>
+      </div>
+      <div v-if="result.question" class="consult-question">
+        <span class="consult-label">{{ t('step4.labelQ') }}</span> {{ result.question }}
+      </div>
+      <div class="consult-answer" :class="{ expanded: expanded }">
+        <span class="consult-label">{{ t('step4.labelA') }}</span> {{ result.answer }}
+      </div>
+      <button v-if="result.answer && result.answer.length > 400" class="consult-toggle" @click="toggleExpanded">
+        {{ expanded ? t('step4.showLess') : t('step4.showMore') }}
+      </button>
+    </div>
+  `
 }
+
 
 // Quick Search Display Component - Enhanced with full data rendering
 const QuickSearchDisplay = {
@@ -1595,20 +1135,20 @@ const QuickSearchDisplay = {
     const formatSize = (length) => {
       if (!length) return ''
       if (length >= 1000) {
-        return `${(length / 1000).toFixed(1)}k chars`
+        return t('step4.sizeKChars', { count: (length / 1000).toFixed(1) })
       }
-      return `${length} chars`
+      return t('step4.sizeChars', { count: length })
     }
-    
+
     return () => h('div', { class: 'quick-search-display' }, [
       // Header Section
       h('div', { class: 'quicksearch-header' }, [
         h('div', { class: 'header-main' }, [
-          h('div', { class: 'header-title' }, 'Quick Search'),
+          h('div', { class: 'header-title' }, t('step4.toolQuickSearch')),
           h('div', { class: 'header-stats' }, [
             h('span', { class: 'stat-item' }, [
               h('span', { class: 'stat-value' }, props.result.count || props.result.facts.length),
-              h('span', { class: 'stat-label' }, 'Results')
+              h('span', { class: 'stat-label' }, t('step4.statResults'))
             ]),
             props.resultLength && h('span', { class: 'stat-divider' }, '·'),
             props.resultLength && h('span', { class: 'stat-size' }, formatSize(props.resultLength))
@@ -1713,9 +1253,9 @@ const statusClass = computed(() => {
 })
 
 const statusText = computed(() => {
-  if (isComplete.value) return 'Completed'
-  if (agentLogs.value.length > 0) return 'Generating...'
-  return 'Waiting'
+  if (isComplete.value) return t('common.completed')
+  if (agentLogs.value.length > 0) return t('common.processing')
+  return t('common.pending')
 })
 
 const totalSections = computed(() => {
@@ -1792,9 +1332,9 @@ const workflowSteps = computed(() => {
   steps.push({
     key: 'planning',
     noLabel: 'PL',
-    title: 'Planning / Outline',
+    title: t('step4.stepPlanningOutline'),
     status: planningStatus,
-    meta: planningStatus === 'active' ? 'IN PROGRESS' : ''
+    meta: planningStatus === 'active' ? t('step4.inProgress') : ''
   })
 
   // Sections (if outline exists)
@@ -1810,7 +1350,7 @@ const workflowSteps = computed(() => {
       noLabel: String(idx).padStart(2, '0'),
       title: section.title,
       status,
-      meta: status === 'active' ? 'IN PROGRESS' : ''
+      meta: status === 'active' ? t('step4.inProgress') : ''
     })
   })
 
@@ -1819,9 +1359,9 @@ const workflowSteps = computed(() => {
   steps.push({
     key: 'complete',
     noLabel: 'OK',
-    title: 'Complete',
+    title: t('step4.stepComplete'),
     status: completeStatus,
-    meta: completeStatus === 'active' ? 'FINALIZING' : ''
+    meta: completeStatus === 'active' ? t('step4.finalizing') : ''
   })
 
   return steps
@@ -1861,8 +1401,8 @@ const formatParams = (params) => {
 
 const formatResultSize = (length) => {
   if (!length) return ''
-  if (length < 1000) return `${length} chars`
-  return `${(length / 1000).toFixed(1)}k chars`
+  if (length < 1000) return t('step4.sizeChars', { count: length })
+  return t('step4.sizeKChars', { count: (length / 1000).toFixed(1) })
 }
 
 const truncateText = (text, maxLen) => {
@@ -1996,16 +1536,16 @@ const getConnectorClass = (log, idx, total) => {
 
 const getActionLabel = (action) => {
   const labels = {
-    'report_start': 'Report Started',
-    'planning_start': 'Planning',
-    'planning_complete': 'Plan Complete',
-    'section_start': 'Section Start',
-    'section_content': 'Content Ready',
-    'section_complete': 'Section Done',
-    'tool_call': 'Tool Call',
-    'tool_result': 'Tool Result',
-    'llm_response': 'LLM Response',
-    'report_complete': 'Complete'
+    'report_start': t('step4.actionReportStarted'),
+    'planning_start': t('step4.actionPlanning'),
+    'planning_complete': t('step4.actionPlanComplete'),
+    'section_start': t('step4.actionSectionStart'),
+    'section_content': t('step4.actionContentReady'),
+    'section_complete': t('step4.actionSectionDone'),
+    'tool_call': t('step4.actionToolCall'),
+    'tool_result': t('step4.actionToolResult'),
+    'llm_response': t('step4.actionLlmResponse'),
+    'report_complete': t('step4.stepComplete')
   }
   return labels[action] || action
 }
@@ -4216,6 +3756,67 @@ watch(() => props.reportId, (newId) => {
 }
 
 /* ========== Enhanced Insight Display Styles ========== */
+:deep(.consult-display) {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border-radius: 8px;
+  border: 1px solid #6EE7B7;
+}
+
+:deep(.consult-header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+:deep(.consult-role-badge) {
+  font-size: 11px;
+  font-weight: 700;
+  color: #065F46;
+  background: #A7F3D0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+:deep(.consult-size) {
+  font-size: 10px;
+  color: #6B7280;
+}
+
+:deep(.consult-question) {
+  font-size: 12px;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+:deep(.consult-answer) {
+  font-size: 12px;
+  color: #1F2937;
+  line-height: 1.6;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+:deep(.consult-answer.expanded) {
+  max-height: none;
+}
+
+:deep(.consult-label) {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+:deep(.consult-toggle) {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #059669;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
 :deep(.insight-display) {
   padding: 0;
 }

@@ -13,6 +13,7 @@ from ..config import Config
 from ..services.ontology_generator import OntologyGenerator
 from ..services.graph_builder import GraphBuilderService
 from ..services.text_processor import TextProcessor
+from ..services.literature_search import LiteratureSearchService
 from ..utils.file_parser import FileParser
 from ..utils.logger import get_logger
 from ..utils.locale import t, get_locale, set_locale
@@ -122,16 +123,21 @@ def reset_project(project_id: str):
 @graph_bp.route('/ontology/generate', methods=['POST'])
 def generate_ontology():
     """
-    接口1：上传文件，分析生成本体定义
-    
+    接口1：分析生成本体定义（问题优先入口）
+
     请求方式：multipart/form-data
-    
+
     参数：
-        files: 上传的文件（PDF/MD/TXT），可多个
-        simulation_requirement: 模拟需求描述（必填）
+        simulation_requirement: 研究问题描述（必填）
+        files: 用户额外上传的文件（PDF/MD/TXT），可选，作为自动检索文献的补充
+        max_papers: 自动文献检索的最大篇数（可选，默认15，硬上限20）
         project_name: 项目名称（可选）
         additional_context: 额外说明（可选）
-        
+
+    行为：
+        若提供了研究问题，系统会自动检索相关文献（最多 max_papers 篇）用于构建种子文本，
+        用户无需预先准备文件。用户上传的文件会与自动检索到的文献合并，而非相互替代。
+
     返回：
         {
             "success": true,
@@ -143,70 +149,92 @@ def generate_ontology():
                     "analysis_summary": "..."
                 },
                 "files": [...],
+                "seed_sources": [...],
                 "total_text_length": 12345
             }
         }
     """
     try:
         logger.info("=== 开始生成本体定义 ===")
-        
+
         # 获取参数
         simulation_requirement = request.form.get('simulation_requirement', '')
         project_name = request.form.get('project_name', 'Unnamed Project')
         additional_context = request.form.get('additional_context', '')
-        
+        max_papers = request.form.get('max_papers', 15, type=int)
+        max_papers = max(1, min(max_papers, 20))  # 硬上限20篇
+
         logger.debug(f"项目名称: {project_name}")
-        logger.debug(f"模拟需求: {simulation_requirement[:100]}...")
-        
+        logger.debug(f"研究问题: {simulation_requirement[:100]}...")
+
         if not simulation_requirement:
             return jsonify({
                 "success": False,
                 "error": t('api.requireSimulationRequirement')
             }), 400
-        
-        # 获取上传的文件
+
+        # 获取用户额外上传的文件（可选，作为自动检索文献的补充）
         uploaded_files = request.files.getlist('files')
-        if not uploaded_files or all(not f.filename for f in uploaded_files):
-            return jsonify({
-                "success": False,
-                "error": t('api.requireFileUpload')
-            }), 400
-        
+        uploaded_files = [f for f in uploaded_files if f and f.filename]
+
         # 创建项目
         project = ProjectManager.create_project(name=project_name)
         project.simulation_requirement = simulation_requirement
         logger.info(f"创建项目: {project.project_id}")
-        
+
         # 保存文件并提取文本
         document_texts = []
         all_text = ""
-        
+
         for file in uploaded_files:
-            if file and file.filename and allowed_file(file.filename):
+            if allowed_file(file.filename):
                 # 保存文件到项目目录
                 file_info = ProjectManager.save_file_to_project(
-                    project.project_id, 
-                    file, 
+                    project.project_id,
+                    file,
                     file.filename
                 )
                 project.files.append({
                     "filename": file_info["original_filename"],
                     "size": file_info["size"]
                 })
-                
+
                 # 提取文本
                 text = FileParser.extract_text(file_info["path"])
                 text = TextProcessor.preprocess_text(text)
                 document_texts.append(text)
                 all_text += f"\n\n=== {file_info['original_filename']} ===\n{text}"
-        
+
+        # 自动检索文献作为种子文本（问题优先入口，无需用户预先上传文件）
+        logger.info(f"自动检索文献（最多 {max_papers} 篇），研究问题: {simulation_requirement[:100]}...")
+        literature_service = LiteratureSearchService()
+        try:
+            literature_results = literature_service.search(simulation_requirement, limit=max_papers)
+        except Exception:
+            logger.exception("自动文献检索失败")
+            literature_results = []
+
+        for result in literature_results:
+            project.seed_sources.append({
+                "title": result.title,
+                "authors": result.authors,
+                "year": result.year,
+                "venue": result.venue,
+                "url": result.url,
+                "source": result.source
+            })
+            document_texts.append(result.to_seed_text())
+            all_text += f"\n\n=== {result.title} ===\n{result.to_seed_text()}"
+
+        logger.info(f"自动检索到 {len(literature_results)} 篇文献")
+
         if not document_texts:
             ProjectManager.delete_project(project.project_id)
             return jsonify({
                 "success": False,
                 "error": t('api.noDocProcessed')
             }), 400
-        
+
         # 保存提取的文本
         project.total_text_length = len(all_text)
         ProjectManager.save_extracted_text(project.project_id, all_text)
@@ -243,6 +271,7 @@ def generate_ontology():
                 "ontology": project.ontology,
                 "analysis_summary": project.analysis_summary,
                 "files": project.files,
+                "seed_sources": project.seed_sources,
                 "total_text_length": project.total_text_length
             }
         })

@@ -24,9 +24,9 @@ logger = get_logger('mirofish.simulation_ipc')
 
 class CommandType(str, Enum):
     """命令类型"""
-    INTERVIEW = "interview"           # 单个Agent采访
-    BATCH_INTERVIEW = "batch_interview"  # 批量采访
-    CLOSE_ENV = "close_env"           # 关闭环境
+    CONSULT_AGENT = "consult_agent"          # 咨询单个固定角色（7个Co-Scientist角色之一）
+    BATCH_CONSULT = "batch_consult"          # 批量咨询
+    CLOSE_ENV = "close_env"                  # 关闭环境
 
 
 class CommandStatus(str, Enum):
@@ -186,67 +186,53 @@ class SimulationIPCClient:
         
         raise TimeoutError(f"等待命令响应超时 ({timeout}秒)")
     
-    def send_interview(
+    def send_consult(
         self,
-        agent_id: int,
+        role: str,
         prompt: str,
-        platform: str = None,
         timeout: float = 60.0
     ) -> IPCResponse:
         """
-        发送单个Agent采访命令
-        
+        咨询单个固定角色（Generation/Reflection/Ranking/Tournament/Evolution/Proximity/MetaReview之一）
+
         Args:
-            agent_id: Agent ID
-            prompt: 采访问题
-            platform: 指定平台（可选）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台  
-                - None: 双平台模拟时同时采访两个平台，单平台模拟时采访该平台
+            role: 角色名（如 "Reflection", "Ranking"）
+            prompt: 问题
             timeout: 超时时间
-            
+
         Returns:
-            IPCResponse，result字段包含采访结果
+            IPCResponse，result字段包含回答结果
         """
         args = {
-            "agent_id": agent_id,
+            "role": role,
             "prompt": prompt
         }
-        if platform:
-            args["platform"] = platform
-            
+
         return self.send_command(
-            command_type=CommandType.INTERVIEW,
+            command_type=CommandType.CONSULT_AGENT,
             args=args,
             timeout=timeout
         )
-    
-    def send_batch_interview(
+
+    def send_batch_consult(
         self,
-        interviews: List[Dict[str, Any]],
-        platform: str = None,
+        consultations: List[Dict[str, Any]],
         timeout: float = 120.0
     ) -> IPCResponse:
         """
-        发送批量采访命令
-        
+        批量咨询多个固定角色
+
         Args:
-            interviews: 采访列表，每个元素包含 {"agent_id": int, "prompt": str, "platform": str(可选)}
-            platform: 默认平台（可选，会被每个采访项的platform覆盖）
-                - "twitter": 默认只采访Twitter平台
-                - "reddit": 默认只采访Reddit平台
-                - None: 双平台模拟时每个Agent同时采访两个平台
+            consultations: 咨询列表，每个元素包含 {"role": str, "prompt": str}
             timeout: 超时时间
-            
+
         Returns:
-            IPCResponse，result字段包含所有采访结果
+            IPCResponse，result字段包含所有回答结果
         """
-        args = {"interviews": interviews}
-        if platform:
-            args["platform"] = platform
-            
+        args = {"consultations": consultations}
+
         return self.send_command(
-            command_type=CommandType.BATCH_INTERVIEW,
+            command_type=CommandType.BATCH_CONSULT,
             args=args,
             timeout=timeout
         )

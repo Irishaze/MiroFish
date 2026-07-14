@@ -8,8 +8,8 @@
           <!-- Report Header -->
           <div class="report-header-block">
             <div class="report-meta">
-              <span class="report-tag">Prediction Report</span>
-              <span class="report-id">ID: {{ reportId || 'REF-2024-X92' }}</span>
+              <span class="report-tag">{{ $t('step5.researchReportTag') }}</span>
+              <span class="report-id">{{ $t('step5.idLabel') }}: {{ reportId || 'REF-2024-X92' }}</span>
             </div>
             <h1 class="main-title">{{ reportOutline.title }}</h1>
             <p class="sub-title">{{ reportOutline.summary }}</p>
@@ -72,7 +72,7 @@
             <div class="waiting-ring"></div>
             <div class="waiting-ring"></div>
           </div>
-          <span class="waiting-text">Waiting for Report Agent...</span>
+          <span class="waiting-text">{{ $t('step4.waitingForReportAgent') }}</span>
         </div>
       </div>
 
@@ -110,7 +110,7 @@
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span>{{ selectedAgent ? selectedAgent.username : $t('step5.chatWithAgent') }}</span>
+                <span>{{ selectedAgent ? (selectedAgent.displayName || selectedAgent.username) : $t('step5.chatWithAgent') }}</span>
                 <svg class="dropdown-arrow" :class="{ open: showAgentDropdown }" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
@@ -123,9 +123,9 @@
                   class="dropdown-item"
                   @click="selectAgent(agent, idx)"
                 >
-                  <div class="agent-avatar">{{ (agent.username || 'A')[0] }}</div>
+                  <div class="agent-avatar">{{ (agent.displayName || agent.username || 'A')[0] }}</div>
                   <div class="agent-info">
-                    <span class="agent-name">{{ agent.username }}</span>
+                    <span class="agent-name">{{ agent.displayName || agent.username }}</span>
                     <span class="agent-role">{{ agent.profession || $t('step2.unknownProfession') }}</span>
                   </div>
                 </div>
@@ -219,9 +219,9 @@
           <!-- Agent Profile Card -->
           <div v-if="chatTarget === 'agent' && selectedAgent" class="agent-profile-card">
             <div class="profile-card-header">
-              <div class="profile-card-avatar">{{ (selectedAgent.username || 'A')[0] }}</div>
+              <div class="profile-card-avatar">{{ (selectedAgent.displayName || selectedAgent.username || 'A')[0] }}</div>
               <div class="profile-card-info">
-                <div class="profile-card-name">{{ selectedAgent.username }}</div>
+                <div class="profile-card-name">{{ selectedAgent.displayName || selectedAgent.username }}</div>
                 <div class="profile-card-meta">
                   <span v-if="selectedAgent.name" class="profile-card-handle">@{{ selectedAgent.name }}</span>
                   <span class="profile-card-profession">{{ selectedAgent.profession || $t('step2.unknownProfession') }}</span>
@@ -260,13 +260,13 @@
               :class="msg.role"
             >
               <div class="message-avatar">
-                <span v-if="msg.role === 'user'">U</span>
-                <span v-else>{{ msg.role === 'assistant' && chatTarget === 'report_agent' ? 'R' : (selectedAgent?.username?.[0] || 'A') }}</span>
+                <span v-if="msg.role === 'user'">{{ $t('step5.userAvatarInitial') }}</span>
+                <span v-else>{{ msg.role === 'assistant' && chatTarget === 'report_agent' ? 'R' : ((selectedAgent?.displayName || selectedAgent?.username)?.[0] || 'A') }}</span>
               </div>
               <div class="message-content">
                 <div class="message-header">
                   <span class="sender-name">
-                    {{ msg.role === 'user' ? 'You' : (chatTarget === 'report_agent' ? 'Report Agent' : (selectedAgent?.username || 'Agent')) }}
+                    {{ msg.role === 'user' ? $t('step5.you') : (chatTarget === 'report_agent' ? $t('step5.reportAgentLabel') : (selectedAgent?.displayName || selectedAgent?.username || $t('step5.agentFallback'))) }}
                   </span>
                   <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
                 </div>
@@ -275,7 +275,7 @@
             </div>
             <div v-if="isSending" class="chat-message assistant">
               <div class="message-avatar">
-                <span>{{ chatTarget === 'report_agent' ? 'R' : (selectedAgent?.username?.[0] || 'A') }}</span>
+                <span>{{ chatTarget === 'report_agent' ? 'R' : ((selectedAgent?.displayName || selectedAgent?.username)?.[0] || 'A') }}</span>
               </div>
               <div class="message-content">
                 <div class="typing-indicator">
@@ -332,9 +332,9 @@
                     :checked="selectedAgents.has(idx)"
                     @change="toggleAgentSelection(idx)"
                   >
-                  <div class="checkbox-avatar">{{ (agent.username || 'A')[0] }}</div>
+                  <div class="checkbox-avatar">{{ (agent.displayName || agent.username || 'A')[0] }}</div>
                   <div class="checkbox-info">
-                    <span class="checkbox-name">{{ agent.username }}</span>
+                    <span class="checkbox-name">{{ agent.displayName || agent.username }}</span>
                     <span class="checkbox-role">{{ agent.profession || $t('step2.unknownProfession') }}</span>
                   </div>
                   <div class="checkbox-indicator">
@@ -414,7 +414,19 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { chatWithReport, getReport, getAgentLog } from '../api/report'
-import { interviewAgents, getSimulationProfilesRealtime } from '../api/simulation'
+import { consultAgent, consultAgentsBatch } from '../api/simulation'
+
+// 7个固定Co-Scientist角色（不再是LLM生成的人设，所有项目共享同一套角色）
+// username 是发给后端 /consult 接口的角色标识符，必须保持英文原样；displayName 仅用于界面展示
+const FIXED_ROLES = [
+  { username: 'Generation', displayName: '生成智能体', name: 'generation', profession: '生成智能体', bio: '基于文献提出假设与评估视角。' },
+  { username: 'Reflection', displayName: '反思智能体', name: 'reflection', profession: '反思智能体', bio: '对照文献证据同行评审每个候选项。' },
+  { username: 'Ranking', displayName: '排序智能体', name: 'ranking', profession: '排序智能体', bio: '裁判两两对战，更新Elo评分。' },
+  { username: 'Tournament', displayName: '锦标赛智能体', name: 'tournament', profession: '锦标赛智能体', bio: '安排锦标赛对战配对。' },
+  { username: 'Evolution', displayName: '进化智能体', name: 'evolution', profession: '进化智能体', bio: '跨周期精炼顶尖候选项。' },
+  { username: 'Proximity', displayName: '相似度智能体', name: 'proximity', profession: '相似度智能体', bio: '对近似重复候选项去重。' },
+  { username: 'MetaReview', displayName: '元评审智能体', name: 'metareview', profession: '元评审智能体', bio: '将本轮研究周期综合为总结。' },
+]
 
 const { t } = useI18n()
 
@@ -453,7 +465,7 @@ const reportOutline = ref(null)
 const generatedSections = ref({})
 const collapsedSections = ref(new Set())
 const currentSectionIndex = ref(null)
-const profiles = ref([])
+const profiles = ref(FIXED_ROLES)
 
 // Helper Methods
 const isSectionCompleted = (sectionIndex) => {
@@ -538,7 +550,7 @@ const selectAgent = (agent, idx) => {
   
   // 恢复该 Agent 的对话记录
   chatHistory.value = chatHistoryCache.value[`agent_${idx}`] || []
-  addLog(t('log.selectChatTarget', { name: agent.username }))
+  addLog(t('log.selectChatTarget', { name: agent.displayName || agent.username }))
 }
 
 const formatTime = (timestamp) => {
@@ -714,7 +726,7 @@ const sendToAgent = async (message) => {
     throw new Error(t('step5.selectAgentFirst'))
   }
   
-  addLog(t('log.sendToAgent', { name: selectedAgent.value.username, message: message.substring(0, 50) }))
+  addLog(t('log.sendToAgent', { name: selectedAgent.value.displayName || selectedAgent.value.username, message: message.substring(0, 50) }))
   
   // Build prompt with chat history
   let prompt = message
@@ -727,44 +739,22 @@ const sendToAgent = async (message) => {
     prompt = `以下是我们之前的对话：\n${historyContext}\n\n现在我的新问题是：${message}`
   }
   
-  const res = await interviewAgents({
+  const res = await consultAgent({
     simulation_id: props.simulationId,
-    interviews: [{
-      agent_id: selectedAgentIndex.value,
-      prompt: prompt
-    }]
+    role: selectedAgent.value.username,
+    prompt: prompt
   })
-  
+
   if (res.success && res.data) {
-    // 正确的数据路径: res.data.result.results 是一个对象字典
-    // 格式: {"twitter_0": {...}, "reddit_0": {...}} 或单平台 {"reddit_0": {...}}
-    const resultData = res.data.result || res.data
-    const resultsDict = resultData.results || resultData
-    
-    // 将对象字典转换为数组，优先获取 reddit 平台的回复
-    let responseContent = null
-    const agentId = selectedAgentIndex.value
-    
-    if (typeof resultsDict === 'object' && !Array.isArray(resultsDict)) {
-      // 优先使用 reddit 平台回复，其次 twitter
-      const redditKey = `reddit_${agentId}`
-      const twitterKey = `twitter_${agentId}`
-      const agentResult = resultsDict[redditKey] || resultsDict[twitterKey] || Object.values(resultsDict)[0]
-      if (agentResult) {
-        responseContent = agentResult.response || agentResult.answer
-      }
-    } else if (Array.isArray(resultsDict) && resultsDict.length > 0) {
-      // 兼容数组格式
-      responseContent = resultsDict[0].response || resultsDict[0].answer
-    }
-    
+    const responseContent = res.data.result?.response
+
     if (responseContent) {
       chatHistory.value.push({
         role: 'assistant',
         content: responseContent,
         timestamp: new Date().toISOString()
       })
-      addLog(t('log.agentReplied', { name: selectedAgent.value.username }))
+      addLog(t('log.agentReplied', { name: selectedAgent.value.displayName || selectedAgent.value.username }))
     } else {
       throw new Error(t('step5.noResponse'))
     }
@@ -809,56 +799,31 @@ const submitSurvey = async () => {
   addLog(t('log.sendSurvey', { count: selectedAgents.value.size }))
   
   try {
-    const interviews = Array.from(selectedAgents.value).map(idx => ({
-      agent_id: idx,
+    const consultations = Array.from(selectedAgents.value).map(idx => ({
+      role: profiles.value[idx].username,
       prompt: surveyQuestion.value.trim()
     }))
-    
-    const res = await interviewAgents({
-      simulation_id: props.simulationId,
-      interviews: interviews
-    })
-    
-    if (res.success && res.data) {
-      // 正确的数据路径: res.data.result.results 是一个对象字典
-      // 格式: {"twitter_0": {...}, "reddit_0": {...}, "twitter_1": {...}, ...}
-      const resultData = res.data.result || res.data
-      const resultsDict = resultData.results || resultData
-      
-      // 将对象字典转换为数组格式
-      const surveyResultsList = []
-      
-      for (const interview of interviews) {
-        const agentIdx = interview.agent_id
-        const agent = profiles.value[agentIdx]
-        
-        // 优先使用 reddit 平台回复，其次 twitter
-        let responseContent = t('step5.noResponse')
 
-        if (typeof resultsDict === 'object' && !Array.isArray(resultsDict)) {
-          const redditKey = `reddit_${agentIdx}`
-          const twitterKey = `twitter_${agentIdx}`
-          const agentResult = resultsDict[redditKey] || resultsDict[twitterKey]
-          if (agentResult) {
-            responseContent = agentResult.response || agentResult.answer || t('step5.noResponse')
-          }
-        } else if (Array.isArray(resultsDict)) {
-          // 兼容数组格式
-          const matchedResult = resultsDict.find(r => r.agent_id === agentIdx)
-          if (matchedResult) {
-            responseContent = matchedResult.response || matchedResult.answer || t('step5.noResponse')
-          }
-        }
-        
-        surveyResultsList.push({
-          agent_id: agentIdx,
-          agent_name: agent?.username || `Agent ${agentIdx}`,
+    const res = await consultAgentsBatch({
+      simulation_id: props.simulationId,
+      consultations: consultations
+    })
+
+    if (res.success && res.data) {
+      const resultsDict = res.data.result?.results || {}
+
+      const surveyResultsList = Array.from(selectedAgents.value).map(idx => {
+        const agent = profiles.value[idx]
+        const agentResult = resultsDict[agent.username]
+        return {
+          agent_id: idx,
+          agent_name: agent?.displayName || agent?.username || `${t('step5.agentFallback')} ${idx}`,
           profession: agent?.profession,
           question: surveyQuestion.value.trim(),
-          answer: responseContent
-        })
-      }
-      
+          answer: agentResult || t('step5.noResponse')
+        }
+      })
+
       surveyResults.value = surveyResultsList
       addLog(t('log.receivedReplies', { count: surveyResults.value.length }))
     } else {
@@ -915,17 +880,9 @@ const loadAgentLogs = async () => {
 }
 
 const loadProfiles = async () => {
-  if (!props.simulationId) return
-  
-  try {
-    const res = await getSimulationProfilesRealtime(props.simulationId, 'reddit')
-    if (res.success && res.data) {
-      profiles.value = res.data.profiles || []
-      addLog(t('log.loadedProfiles', { count: profiles.value.length }))
-    }
-  } catch (err) {
-    addLog(t('log.loadProfilesFailed', { error: err.message }))
-  }
+  // 7个固定角色，无需从后端拉取——所有项目共享同一套角色定义
+  profiles.value = FIXED_ROLES
+  addLog(t('log.loadedProfiles', { count: profiles.value.length }))
 }
 
 // Click outside to close dropdown

@@ -35,7 +35,10 @@ class Project:
     # 文件信息
     files: List[Dict[str, str]] = field(default_factory=list)  # [{filename, path, size}]
     total_text_length: int = 0
-    
+
+    # 自动检索到的文献种子（问题优先入口，无需用户上传文件）
+    seed_sources: List[Dict[str, Any]] = field(default_factory=list)  # [{title, authors, year, url, source}]
+
     # 本体信息（接口1生成后填充）
     ontology: Optional[Dict[str, Any]] = None
     analysis_summary: Optional[str] = None
@@ -62,6 +65,7 @@ class Project:
             "updated_at": self.updated_at,
             "files": self.files,
             "total_text_length": self.total_text_length,
+            "seed_sources": self.seed_sources,
             "ontology": self.ontology,
             "analysis_summary": self.analysis_summary,
             "graph_id": self.graph_id,
@@ -87,6 +91,7 @@ class Project:
             updated_at=data.get('updated_at', ''),
             files=data.get('files', []),
             total_text_length=data.get('total_text_length', 0),
+            seed_sources=data.get('seed_sources', []),
             ontology=data.get('ontology'),
             analysis_summary=data.get('analysis_summary'),
             graph_id=data.get('graph_id'),

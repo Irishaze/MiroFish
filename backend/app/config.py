@@ -34,7 +34,12 @@ class Config:
     
     # Zep配置
     ZEP_API_KEY = os.environ.get('ZEP_API_KEY')
-    
+
+    # 文献检索配置（Semantic Scholar，可选key，用于提升限流额度）
+    S2_API_KEY = os.environ.get('S2_API_KEY')
+    LITERATURE_SEARCH_TIMEOUT = int(os.environ.get('LITERATURE_SEARCH_TIMEOUT', '30'))
+    LITERATURE_SEARCH_MAX_RESULTS = int(os.environ.get('LITERATURE_SEARCH_MAX_RESULTS', '20'))
+
     # 文件上传配置
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '../uploads')
@@ -44,20 +49,14 @@ class Config:
     DEFAULT_CHUNK_SIZE = 500  # 默认切块大小
     DEFAULT_CHUNK_OVERLAP = 50  # 默认重叠大小
     
-    # OASIS模拟配置
-    OASIS_DEFAULT_MAX_ROUNDS = int(os.environ.get('OASIS_DEFAULT_MAX_ROUNDS', '10'))
-    OASIS_SIMULATION_DATA_DIR = os.path.join(os.path.dirname(__file__), '../uploads/simulations')
-    
-    # OASIS平台可用动作配置
-    OASIS_TWITTER_ACTIONS = [
-        'CREATE_POST', 'LIKE_POST', 'REPOST', 'FOLLOW', 'DO_NOTHING', 'QUOTE_POST'
+    # 研究循环配置
+    RESEARCH_LOOP_DEFAULT_MAX_CYCLES = int(os.environ.get('RESEARCH_LOOP_DEFAULT_MAX_CYCLES', '3'))
+    RESEARCH_LOOP_ACTIONS = [
+        'PROPOSE_ASSAY', 'REVIEW_ASSAY', 'ASSAY_MATCH', 'SELECT_ASSAY', 'SYNTHESIZE_GENERATION_GOAL',
+        'PROPOSE_HYPOTHESIS', 'REVIEW_HYPOTHESIS', 'HYPOTHESIS_MATCH', 'REFINE_HYPOTHESIS', 'META_REVIEW',
+        'MERGE_DUPLICATE_CANDIDATES', 'SEARCH_LITERATURE',
     ]
-    OASIS_REDDIT_ACTIONS = [
-        'LIKE_POST', 'DISLIKE_POST', 'CREATE_POST', 'CREATE_COMMENT',
-        'LIKE_COMMENT', 'DISLIKE_COMMENT', 'SEARCH_POSTS', 'SEARCH_USER',
-        'TREND', 'REFRESH', 'DO_NOTHING', 'FOLLOW', 'MUTE'
-    ]
-    
+
     # Report Agent配置
     REPORT_AGENT_MAX_TOOL_CALLS = int(os.environ.get('REPORT_AGENT_MAX_TOOL_CALLS', '5'))
     REPORT_AGENT_MAX_REFLECTION_ROUNDS = int(os.environ.get('REPORT_AGENT_MAX_REFLECTION_ROUNDS', '2'))
